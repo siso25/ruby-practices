@@ -2,7 +2,7 @@
 require 'date'
 require 'optparse'
 
-def is_positive_integer(string)
+def is_positive_integer?(string)
   if !string.nil? && string.match?(/\d+/) && string.to_i > 0
     return true
   end
@@ -10,7 +10,7 @@ def is_positive_integer(string)
   false
 end
 
-def is_within_range_of_month(str_month)
+def is_within_range_of_month?(str_month)
   month = str_month.to_i
   january = 1
   december = 12
@@ -27,23 +27,24 @@ def calculate_start_position(first_date)
 end
 
 
-# 年と月の表示
+# コマンドライン引数の取得
 options = ARGV.getopts("y:", "m:")
 option_year = options["y"]
 option_month = options["m"]
 
-if is_positive_integer(option_year) 
+if is_positive_integer?(option_year) 
   year = option_year.to_i
 else
   year = Date.today.year
 end
 
-if is_positive_integer(option_month) && is_within_range_of_month(option_month)
+if is_positive_integer?(option_month) && is_within_range_of_month?(option_month)
   month = option_month.to_i
 else
   month = Date.today.month
 end
 
+# 年と月の表示
 puts "#{month.to_s}月 #{year.to_s}".center(20)
 
 # 曜日を表示
