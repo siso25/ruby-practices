@@ -2,22 +2,15 @@
 require 'date'
 require 'optparse'
 
-def is_positive_integer?(string)
-  if !string.nil? && string.match?(/\d+/) && string.to_i > 0
-    return true
-  end
-
-  false
+def positive_integer?(string)
+  return !string.nil? && string.match?(/\d+/) && string.to_i > 0
 end
 
-def is_within_range_of_month?(str_month)
+def within_range_of_month?(str_month)
   month = str_month.to_i
   january = 1
   december = 12
-  if january <= month && month <= december
-    return true
-  end
-  false
+  return january <= month && month <= december
 end
 
 def calculate_start_position(first_date)
@@ -26,26 +19,27 @@ def calculate_start_position(first_date)
   start_position = (width_of_day + right_blank) * first_date.wday
 end
 
-
 # コマンドライン引数の取得
 options = ARGV.getopts("y:", "m:")
 option_year = options["y"]
 option_month = options["m"]
 
-if is_positive_integer?(option_year) 
-  year = option_year.to_i
-else
-  year = Date.today.year
-end
+year = 
+  if positive_integer?(option_year) 
+    option_year.to_i
+  else
+    Date.today.year
+  end
 
-if is_positive_integer?(option_month) && is_within_range_of_month?(option_month)
-  month = option_month.to_i
-else
-  month = Date.today.month
-end
+month = 
+  if positive_integer?(option_month) && within_range_of_month?(option_month)
+    option_month.to_i
+  else
+    Date.today.month
+  end
 
 # 年と月の表示
-puts "#{month.to_s}月 #{year.to_s}".center(20)
+puts "#{month}月 #{year}".center(20)
 
 # 曜日を表示
 days_of_week = %w(日 月 火 水 木 金 土)
@@ -62,8 +56,7 @@ last_date = Date.new(year, month, -1)
   end
   print date.day.to_s.rjust(2) + blank
 
-  saturday = 6
-  if date.wday == saturday
+  if date.saturday?
     print "\n"
   end
 end
