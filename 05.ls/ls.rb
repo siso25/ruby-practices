@@ -2,6 +2,27 @@
 
 # frozen_string_literal:true
 
+require 'optparse'
+
+def glob(pattern, directory_path, has_option_a)
+  pattern_with_path = "#{directory_path}/#{pattern}"
+
+  file_path_list =
+    if has_option_a
+      Dir.glob(pattern_with_path, File::FNM_DOTMATCH)
+    else
+      Dir.glob(pattern_with_path)
+    end
+
+  file_path_list.map { |file_path| File.basename(file_path) }
+end
+
+def sort(list, has_option_r)
+  return list.sort.reverse if has_option_r
+    
+  list.sort
+end
+
 def divide_and_ceil_remainder(divisor, dividend)
   return 0 if dividend.zero?
 
@@ -11,7 +32,7 @@ def divide_and_ceil_remainder(divisor, dividend)
   remainder.zero? ? quotient : quotient + 1
 end
 
-def sort_by_output_order(file_name_list, max_column_number, max_low_number)
+def sort_by_wrapping_output_order(file_name_list, max_column_number, max_low_number)
   # eachで順番に出力すれば良い並び順にする
   sorted_list = []
   
@@ -26,17 +47,22 @@ def sort_by_output_order(file_name_list, max_column_number, max_low_number)
   sorted_list
 end
 
+# コマンドライン引数の取得
+options = ARGV.getopts('alr')
+
 # ファイル名（フォルダ名）一覧の取得
 pattern = '*'
-file_or_directory_name_list = Dir.glob(pattern)
-sorted_list = file_or_directory_name_list.sort
+full_path = Dir.pwd
+file_name_list = glob(pattern, full_path, options['a'])
+
+sorted_list = sort(file_name_list, options['r'])
 
 # 出力順に配列を並び替え
 max_column_number = 3
 max_low_number = divide_and_ceil_remainder(sorted_list.size, max_column_number)
-sorted_by_output_order = sort_by_output_order(sorted_list, max_column_number, max_low_number)
+sorted_by_output_order = sort_by_wrapping_output_order(sorted_list, max_column_number, max_low_number)
 
-# 出力
+# 画面出力
 sorted_by_output_order.each_with_index do |item, idx|
   print item.ljust(24) if !item.nil?
   print "\n" if idx % max_column_number == max_column_number - 1
