@@ -10,9 +10,9 @@ class LsTest < Minitest::Test
   end
 
   def test_sort
-    array = ['2', '1', '4', '5', '3']
-    assert_equal ['1', '2', '3', '4', '5'], sort(array, false)
-    assert_equal ['5', '4', '3', '2', '1'], sort(array, true)
+    array = %w[2 1 4 5 3]
+    assert_equal %w[1 2 3 4 5], sort(array, false)
+    assert_equal %w[5 4 3 2 1], sort(array, true)
   end
 
   def test_file_type_for_output
@@ -47,8 +47,8 @@ class LsTest < Minitest::Test
 
   def test_sort_by_wrapping_output_order
     # (列数 × 行数) = 要素数
-    assert_equal ['1', '3', '5', '2', '4', '6'], sort_by_wrapping_output_order(['1', '2', '3', '4', '5', '6'], 3, 2)
+    assert_equal %w[1 3 5 2 4 6], sort_by_wrapping_output_order(%w[1 2 3 4 5 6], 3, 2)
     # (列数 × 行数) > 要素数
-    assert_equal ['1', '4', '7', '2', '5', nil, '3', '6'], sort_by_wrapping_output_order(['1', '2', '3', '4', '5', '6', '7'], 3, 3)
+    assert_equal ['1', '4', '7', '2', '5', nil, '3', '6'], sort_by_wrapping_output_order(%w[1 2 3 4 5 6 7], 3, 3)
   end
 end

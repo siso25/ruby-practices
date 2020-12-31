@@ -20,7 +20,7 @@ end
 
 def sort(list, has_option_r)
   return list.sort.reverse if has_option_r
-    
+
   list.sort
 end
 
@@ -60,7 +60,7 @@ def divide_and_ceil_remainder(divisor, dividend)
 end
 
 def get_file_name(file_name, path, file)
-  return file_name if !file.symlink?
+  return file_name unless file.symlink?
 
   source_file = File.readlink("#{path}/#{file_name}")
   "#{file_name} -> #{source_file}"
@@ -75,7 +75,7 @@ def file_type_and_mode(type, file_mode)
   file_type + user_permission + group_permission + other_permission
 end
 
-def calculate_width(array, unit, key=nil)
+def calculate_width(array, unit, key = nil)
   max_width = 0
   array.each do |item|
     next if item.nil?
@@ -83,16 +83,17 @@ def calculate_width(array, unit, key=nil)
     width = key.nil? ? item.length : item[key].length
     max_width = width if width > max_width
   end
-  calculated_width = divide_and_ceil_remainder(max_width, unit) * unit
+
+  divide_and_ceil_remainder(max_width, unit) * unit
 end
 
 def time_or_year(time)
-  return time.strftime("%R") if last_six_month?(time)
+  return time.strftime('%R') if last_six_month?(time)
 
-  time.strftime("%Y")
+  time.strftime('%Y')
 end
 
-def set_file_info(file_name, path)
+def hash_file_info(file_name, path)
   file = File.lstat("#{path}/#{file_name}")
   file_mode = file.mode.to_s(8)[-3, 3]
   update_time = file.mtime
@@ -104,14 +105,14 @@ def set_file_info(file_name, path)
     group: Etc.getgrgid(file.gid).name,
     size: file.size.to_s,
     block: file.blocks,
-    month: update_time.strftime("%-m"),
-    day: update_time.strftime("%-d"),
+    month: update_time.strftime('%-m'),
+    day: update_time.strftime('%-d'),
     time: time_or_year(update_time),
     name: get_file_name(file_name, path, file)
   }
 end
 
-def set_file_info_with_list(file_info)
+def hash_file_info_width(file_info)
   {
     file_mode: calculate_width(file_info, 1, :file_mode),
     link: calculate_width(file_info, 1, :link),
@@ -141,7 +142,7 @@ end
 def sort_by_wrapping_output_order(file_name_list, max_column_number, max_low_number)
   # eachで順番に出力すれば良い並び順にする
   sorted_list = []
-  
+
   file_name_list.each_with_index do |file_name, idx|
     column_index = idx / max_low_number
     low_index = idx % max_low_number
@@ -162,7 +163,7 @@ def output_short_format(file_name_list)
   # 画面出力
   width = calculate_width(sorted_by_output_order, 8)
   sorted_by_output_order.each_with_index do |item, idx|
-    print item.ljust(width) if !item.nil?
+    print item.ljust(width) unless item.nil?
     print "\n" if idx % max_column_number == max_column_number - 1
   end
 end
@@ -171,14 +172,14 @@ def output_long_format(file_name_list, directory_path)
   # ファイルの詳細情報を取得
   file_info_list = []
   file_name_list.each do |file_name|
-    file_info_list << set_file_info(file_name, directory_path)
+    file_info_list << hash_file_info(file_name, directory_path)
   end
 
   total_block = 0
   file_info_list.each { |file| total_block += file[:block] }
   puts "total #{total_block}"
 
-  file_info_width_list = set_file_info_with_list(file_info_list)
+  file_info_width_list = hash_file_info_width(file_info_list)
   file_info_list.each do |file_info|
     puts long_format(file_info, file_info_width_list)
   end
