@@ -155,29 +155,35 @@ def sort_by_wrapping_output_order(file_name_list, max_column_number, max_low_num
 end
 
 def output_short_format(file_name_list)
-  # 出力順に配列を並び替え
   max_column_number = 3
   max_low_number = divide_and_ceil_remainder(file_name_list.size, max_column_number)
   sorted_by_output_order = sort_by_wrapping_output_order(file_name_list, max_column_number, max_low_number)
 
-  # 画面出力
+  last_index = sorted_by_output_order.size - 1
   width = calculate_width(sorted_by_output_order, 8)
   sorted_by_output_order.each_with_index do |item, idx|
     print item.ljust(width) unless item.nil?
+    # 1行だけのときは改行しない
+    next if idx == last_index
+
     print "\n" if idx % max_column_number == max_column_number - 1
   end
+
+  puts "\n"
 end
 
-def output_long_format(file_name_list, directory_path)
+def output_long_format(file_name_list, directory_path, is_dir)
   # ファイルの詳細情報を取得
   file_info_list = []
   file_name_list.each do |file_name|
     file_info_list << hash_file_info(file_name, directory_path)
   end
 
-  total_block = 0
-  file_info_list.each { |file| total_block += file[:block] }
-  puts "total #{total_block}"
+  if is_dir
+    total_block = 0
+    file_info_list.each { |file| total_block += file[:block] }
+    puts "total #{total_block}"
+  end
 
   file_info_width_list = hash_file_info_width(file_info_list)
   file_info_list.each do |file_info|
@@ -187,18 +193,20 @@ end
 
 # コマンドライン引数の取得
 options = ARGV.getopts('alr')
+path = ARGV[0]
+absolute_path = path.nil? ? Dir.pwd : File.expand_path(path)
+abort("ls: #{path}: No such file or directory") unless File.exist?(absolute_path)
 
 # ファイル一覧の取得
-pattern = '*'
-directory_path = Dir.pwd
+is_dir = File.directory?(absolute_path)
+pattern = is_dir ? '*' : File.basename(absolute_path)
+directory_path = is_dir ? absolute_path : File.dirname(absolute_path)
 file_name_list = glob(pattern, directory_path, options['a'])
 sorted_list = sort(file_name_list, options['r'])
 
 # 画面出力
 if options['l']
-  output_long_format(sorted_list, directory_path)
+  output_long_format(sorted_list, directory_path, is_dir)
 else
   output_short_format(sorted_list)
 end
-
-puts "\n"
