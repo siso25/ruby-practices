@@ -3,6 +3,7 @@
 # frozen_string_literal:true
 
 require 'optparse'
+require 'etc'
 
 def glob(pattern, directory_path, has_option_a)
   pattern_with_path = "#{directory_path}/#{pattern}"
@@ -23,6 +24,32 @@ def sort(list, has_option_r)
   list.sort
 end
 
+def file_type_for_output(file_type)
+  {
+    'file' => '-',
+    'directory' => 'd',
+    'link' => 'l'
+  }[file_type]
+end
+
+def permission_for_output(permission_number)
+  {
+    '0' => '---',
+    '1' => '--x',
+    '2' => '-w-',
+    '3' => '-wx',
+    '4' => 'r--',
+    '5' => 'r-x',
+    '6' => 'rw-',
+    '7' => 'rwx'
+  }[permission_number]
+end
+
+def last_six_month?(date)
+  today = Time.now
+  date.year == today.year && date.month > today.month - 6
+end
+
 def divide_and_ceil_remainder(divisor, dividend)
   return 0 if dividend.zero?
 
@@ -30,6 +57,85 @@ def divide_and_ceil_remainder(divisor, dividend)
   remainder = divisor % dividend
 
   remainder.zero? ? quotient : quotient + 1
+end
+
+def get_file_name(file_name, path, file)
+  return file_name if !file.symlink?
+
+  source_file = File.readlink("#{path}/#{file_name}")
+  "#{file_name} -> #{source_file}"
+end
+
+def file_type_and_mode(type, file_mode)
+  file_type = file_type_for_output(type)
+  user_permission = permission_for_output(file_mode[0])
+  group_permission = permission_for_output(file_mode[1])
+  other_permission = permission_for_output(file_mode[2])
+
+  file_type + user_permission + group_permission + other_permission
+end
+
+def calculate_width(array, unit, key=nil)
+  max_width = 0
+  array.each do |item|
+    next if item.nil?
+
+    width = key.nil? ? item.length : item[key].length
+    max_width = width if width > max_width
+  end
+  calculated_width = divide_and_ceil_remainder(max_width, unit) * unit
+end
+
+def time_or_year(time)
+  return time.strftime("%R") if last_six_month?(time)
+
+  time.strftime("%Y")
+end
+
+def set_file_info(file_name, path)
+  file = File.lstat("#{path}/#{file_name}")
+  file_mode = file.mode.to_s(8)[-3, 3]
+  update_time = file.mtime
+
+  {
+    file_mode: file_type_and_mode(file.ftype, file_mode),
+    link: file.nlink.to_s,
+    owner: Etc.getpwuid(file.uid).name,
+    group: Etc.getgrgid(file.gid).name,
+    size: file.size.to_s,
+    block: file.blocks,
+    month: update_time.strftime("%-m"),
+    day: update_time.strftime("%-d"),
+    time: time_or_year(update_time),
+    name: get_file_name(file_name, path, file)
+  }
+end
+
+def set_file_info_with_list(file_info)
+  {
+    file_mode: calculate_width(file_info, 1, :file_mode),
+    link: calculate_width(file_info, 1, :link),
+    owner: calculate_width(file_info, 1, :owner),
+    group: calculate_width(file_info, 1, :group),
+    size: calculate_width(file_info, 1, :size),
+    month: calculate_width(file_info, 1, :month),
+    day: calculate_width(file_info, 1, :day),
+    time: calculate_width(file_info, 1, :time)
+  }
+end
+
+def long_format(file_info, file_info_width_list)
+  file_mode = file_info[:file_mode].ljust(file_info_width_list[:file_mode])
+  link = file_info[:link].rjust(file_info_width_list[:link])
+  owner = file_info[:owner].ljust(file_info_width_list[:owner])
+  group = file_info[:group].ljust(file_info_width_list[:group])
+  size = file_info[:size].rjust(file_info_width_list[:size])
+  month = file_info[:month].rjust(file_info_width_list[:month])
+  day = file_info[:day].rjust(file_info_width_list[:day])
+  time = file_info[:time].rjust(file_info_width_list[:time])
+  name = file_info[:name]
+
+  "#{file_mode}  #{link} #{owner}  #{group}  #{size} #{month} #{day} #{time} #{name}"
 end
 
 def sort_by_wrapping_output_order(file_name_list, max_column_number, max_low_number)
@@ -47,25 +153,51 @@ def sort_by_wrapping_output_order(file_name_list, max_column_number, max_low_num
   sorted_list
 end
 
+def output_short_format(file_name_list)
+  # 出力順に配列を並び替え
+  max_column_number = 3
+  max_low_number = divide_and_ceil_remainder(file_name_list.size, max_column_number)
+  sorted_by_output_order = sort_by_wrapping_output_order(file_name_list, max_column_number, max_low_number)
+
+  # 画面出力
+  width = calculate_width(sorted_by_output_order, 8)
+  sorted_by_output_order.each_with_index do |item, idx|
+    print item.ljust(width) if !item.nil?
+    print "\n" if idx % max_column_number == max_column_number - 1
+  end
+end
+
+def output_long_format(file_name_list, directory_path)
+  # ファイルの詳細情報を取得
+  file_info_list = []
+  file_name_list.each do |file_name|
+    file_info_list << set_file_info(file_name, directory_path)
+  end
+
+  total_block = 0
+  file_info_list.each { |file| total_block += file[:block] }
+  puts "total #{total_block}"
+
+  file_info_width_list = set_file_info_with_list(file_info_list)
+  file_info_list.each do |file_info|
+    puts long_format(file_info, file_info_width_list)
+  end
+end
+
 # コマンドライン引数の取得
 options = ARGV.getopts('alr')
 
-# ファイル名（フォルダ名）一覧の取得
+# ファイル一覧の取得
 pattern = '*'
-full_path = Dir.pwd
-file_name_list = glob(pattern, full_path, options['a'])
-
+directory_path = Dir.pwd
+file_name_list = glob(pattern, directory_path, options['a'])
 sorted_list = sort(file_name_list, options['r'])
 
-# 出力順に配列を並び替え
-max_column_number = 3
-max_low_number = divide_and_ceil_remainder(sorted_list.size, max_column_number)
-sorted_by_output_order = sort_by_wrapping_output_order(sorted_list, max_column_number, max_low_number)
-
 # 画面出力
-sorted_by_output_order.each_with_index do |item, idx|
-  print item.ljust(24) if !item.nil?
-  print "\n" if idx % max_column_number == max_column_number - 1
+if options['l']
+  output_long_format(sorted_list, directory_path)
+else
+  output_short_format(sorted_list)
 end
 
 puts "\n"
