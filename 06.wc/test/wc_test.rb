@@ -37,14 +37,19 @@ class WcTest < Minitest::Test
     file.close
   end
 
-  def test_set_info
+  def test_to_h
     file_name = 'test/test1.txt'
-    assert_equal({ name: 'test/test1.txt', is_exist: true, lines: 3, words: 4, bytes: 19 }, set_info(name: file_name, lines: 3, words: 4, bytes: 19))
+    assert_equal({ name: file_name, is_exist: true, lines: 3, words: 4, bytes: 19 }, to_h(file_name, true, 3, 4, 19))
   end
 
   def test_std_in_info
     str = %W[test\n test\n test]
     assert_equal [{ name: '', is_exist: true, lines: 2, words: 3, bytes: 14 }], std_in_info(str)
+  end
+
+  def test_file_info
+    assert_equal({ name: 'test/test1.txt', is_exist: true, lines: 3, words: 4, bytes: 19 }, file_info('test/test1.txt'))
+    assert_equal({ name: 'test/test3.txt', is_exist: false, lines: 0, words: 0, bytes: 0 }, file_info('test/test3.txt'))
   end
 
   def test_files_info
@@ -65,6 +70,16 @@ class WcTest < Minitest::Test
     assert_equal 111, calc_total(array, :lines)
     assert_equal(-222, calc_total(array, :words))
     assert_equal 0, calc_total(array, :bytes)
+  end
+
+  def test_width_list
+    array = [{ name: 'a', is_exist: true, lines: 10, words: 100, bytes: 1000 }, { name: 'bc', is_exist: true, lines: 20, words: 200, bytes: 2000 }]
+    assert_equal({ name: '', is_exist: true, lines: 7, words: 7, bytes: 7 }, width_list(array))
+  end
+
+  def test_total_list
+    array = [{ name: 'a', is_exist: true, lines: 10, words: 100, bytes: 1000 }, { name: 'bc', is_exist: true, lines: 20, words: 200, bytes: 2000 }]
+    assert_equal({ name: 'total', is_exist: true, lines: 30, words: 300, bytes: 3000 }, total_list(array))
   end
 
   def test_output_format

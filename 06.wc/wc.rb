@@ -16,44 +16,16 @@ def error_message(file_name)
   "wc: #{file_name}: open: No such file or directory"
 end
 
-def count_chars(file)
-  file.each.sum { |line| line.chars.size }
+def count_chars(lines)
+  lines.sum { |line| line.chars.size }
 end
 
-def count_words(file)
-  file.each.sum { |line| line.split(/[\s \n]+/).size }
+def count_words(lines)
+  lines.sum { |line| line.split(/[\s \n]+/).size }
 end
 
-def count_lines(file)
-  file.each.sum { |line| line[-1] == "\n" ? 1 : 0 }
-end
-
-def set_info(name: '', is_exist: true, lines: 0, words: 0, bytes: 0)
-  {
-    name: name,
-    is_exist: is_exist,
-    lines: lines,
-    words: words,
-    bytes: bytes
-  }
-end
-
-def std_in_info(std_in)
-  [] << set_info(lines: count_lines(std_in), words: count_words(std_in), bytes: count_chars(std_in))
-end
-
-def files_info(files_name)
-  files_info = []
-  files_name.each do |file_name|
-    next files_info << set_info(name: file_name, is_exist: false) unless File.exist?(file_name)
-
-    File.open(file_name, 'r') do |file|
-      lines = file.map(&:itself)
-      files_info << set_info(name: file_name, lines: count_lines(lines), words: count_words(lines), bytes: count_chars(lines))
-    end
-  end
-
-  files_info
+def count_lines(lines)
+  lines.count { |line| line[-1] == "\n" }
 end
 
 def calc_width(files_info, key, min_width)
@@ -65,17 +37,41 @@ def calc_total(files_info, key)
   files_info.sum { |file| file[key] }
 end
 
+def to_h(name, is_exist, lines, words, bytes)
+  { name: name, is_exist: is_exist, lines: lines, words: words, bytes: bytes }
+end
+
+def std_in_info(std_in)
+  [] << to_h('', true, count_lines(std_in), count_words(std_in), count_chars(std_in))
+end
+
+def file_info(file_name)
+  return to_h(file_name, false, 0, 0, 0) unless File.exist?(file_name)
+
+  File.open(file_name, 'r') do |file|
+    lines = file.readlines
+    to_h(file_name, true, count_lines(lines), count_words(lines), count_chars(lines))
+  end
+end
+
+def files_info(files_name)
+  files_info = []
+  files_name.each { |file_name| files_info << file_info(file_name) }
+  files_info
+end
+
 def width_list(files_info)
-  set_info(lines: calc_width(files_info, :lines, 7),
-           words: calc_width(files_info, :words, 7),
-           bytes: calc_width(files_info, :bytes, 7))
+  line_width = calc_width(files_info, :lines, 7)
+  words_width = calc_width(files_info, :words, 7)
+  bytes_width = calc_width(files_info, :bytes, 7)
+  to_h('', true, line_width, words_width, bytes_width)
 end
 
 def total_list(files_info)
-  set_info(name: 'total',
-           lines: calc_total(files_info, :lines),
-           words: calc_total(files_info, :words),
-           bytes: calc_total(files_info, :bytes))
+  line_total = calc_total(files_info, :lines)
+  words_total = calc_total(files_info, :words)
+  bytes_total = calc_total(files_info, :bytes)
+  to_h('total', true, line_total, words_total, bytes_total)
 end
 
 def output_format(file, width_list, options)
